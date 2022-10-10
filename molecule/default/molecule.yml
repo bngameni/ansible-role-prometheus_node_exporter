@@ -24,6 +24,7 @@ platforms:
 
 provisioner:
   name: ansible
+  log: true
   env:
     ANSIBLE_FORCE_COLOR: "true"
   options:
