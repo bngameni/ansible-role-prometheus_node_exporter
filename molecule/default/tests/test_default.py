@@ -11,4 +11,4 @@ testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
 
 def test_shell(host):
     command = host.run("sh --version")
-    assert command.rc == 0
+    assert command.rc >= 1
