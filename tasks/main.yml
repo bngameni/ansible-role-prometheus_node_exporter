@@ -17,5 +17,5 @@
   loop_control:
     loop_var: loop_vars
 
-- include_tasks: "{{ ansible_distro }}/install.yml"
-
+- name: "Install Prometheus Node Exporter In {{ ansible_distro }}"
+  ansible.builtin.include_tasks: "distro/install.yml"
