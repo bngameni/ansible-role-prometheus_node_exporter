@@ -4,4 +4,5 @@
 # Version of node exporter to install
 prometheus_node_exporter_version: "1.4.0"
 
-
+# Enable prometheus node exporter service
+prometheus_node_exporter_service_enabled: "true"
