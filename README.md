@@ -25,8 +25,10 @@ ansible-galaxy install claranet.prometheus_node_exporter
 
 Variable | Default value | Description
 ---------|---------------|------------
-null     | **null**      | null       
-
+prometheus_node_exporter_version     | **1.4.0**      | Version of node exporter to install    
+---------|---------------|------------
+prometheus_node_exporter_service_enabled     | **true**      | Enable prometheus node exporter service 
+  
 ## :arrows_counterclockwise: Dependencies
 
 N/A
