@@ -26,7 +26,10 @@ ansible-galaxy install claranet.prometheus_node_exporter
 Variable | Default value | Description
 ---------|---------------|------------
 prometheus_node_exporter_version     | **1.4.0**      | Version of node exporter to install   
-prometheus_node_exporter_service_enabled     | **true**      | Enable prometheus node exporter service 
+prometheus_node_exporter_service_enabled     | **True**      | Enable prometheus node exporter service 
+prometheus_node_exporter_user_name    | **node_exporter**      | Define the user_name of user for manage node exporter service
+prometheus_node_exporter_listen_address     | **0.0.0.0:9100**      | Listen address for node exporter service 
+prometheus_node_exporter_collector_textfile_directory     | **""**      | For export metric using textfile directory
 
 ## :arrows_counterclockwise: Dependencies
 
