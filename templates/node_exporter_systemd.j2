@@ -6,7 +6,12 @@ After=network.target
 User=node_exporter
 Group=node_exporter
 Type=simple
-ExecStart=/usr/local/bin/node_exporter
+{% if prometheus_node_exporter_collector_textfile_directory == "" %}
+{% set prometheus_node_exporter_parameter_for_collector_textfile_directory = "" %}
+{% else %}
+{% set prometheus_node_exporter_parameter_for_collector_textfile_directory =  "--collector.textfile.directory= {{ prometheus_node_exporter_collector_textfile_directory }}" %}
+{% endif %}
+ExecStart=/usr/local/bin/node_exporter --web.listen-address={{ prometheus_node_exporter_listen_address }} {{ prometheus_node_exporter_parameter_for_collector_textfile_directory }}
 
 [Install]
 WantedBy=multi-user.target
