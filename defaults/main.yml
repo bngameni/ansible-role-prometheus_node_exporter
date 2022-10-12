@@ -5,4 +5,13 @@
 prometheus_node_exporter_version: "1.4.0"
 
 # Enable prometheus node exporter service
-prometheus_node_exporter_service_enabled: "true"
+prometheus_node_exporter_service_enabled: "True"
+
+# Prometheus node exporter username
+prometheus_node_exporter_user_name: "node_exporter"
+
+# Prometheus node exporter listen address
+prometheus_node_exporter_listen_address: "0.0.0.0:9100"
+
+# Prometheus node exporter textfile directory
+prometheus_node_exporter_collector_textfile_directory: ""
