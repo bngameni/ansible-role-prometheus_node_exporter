@@ -1,15 +1,29 @@
 ---
+- name: "Check if node exporter is already installed"
+  ansible.builtin.stat:
+    path: /usr/local/bin/node_exporter
+  register: _prometheus_node_exporter_is_installed
+
+- name: "Get current node exporter version when it's already installed"
+  ansible.builtin.shell:
+    cmd: "node_exporter --version | grep 'version ' | cut -f2 -d ',' | sed 's#version##g' | sed 's#(branch: HEAD##g'"
+  register: _prometheus_node_exporter_current_version
+  changed_when: false
+  ignore_errors: true
+
 - name: "Get node exporter package"
   ansible.builtin.get_url:
     url: "{{ _prometheus_node_exporter_download_url }}"
     dest: "/tmp/node_exporter-{{ prometheus_node_exporter_version }}.linux-amd64.tar.gz"
     mode: 0644
+  when: "(_prometheus_node_exporter_current_version.stdout | trim) != prometheus_node_exporter_version"
 
 - name: "Unpack the tarball"
   ansible.builtin.unarchive:
     src: "/tmp/node_exporter-{{ prometheus_node_exporter_version }}.linux-amd64.tar.gz"
     dest: /tmp
     remote_src: true
+  when: "(_prometheus_node_exporter_current_version.stdout | trim) != prometheus_node_exporter_version"
 
 - name: "Copy the node exporter binary to /usr/local/bin"
   ansible.builtin.copy:
@@ -17,6 +31,8 @@
     dest: /usr/local/bin
     mode: a+x
     remote_src: true
+  become: true
+  when: "(_prometheus_node_exporter_current_version.stdout | trim) != prometheus_node_exporter_version"
 
 - name: "Create node exporter user"
   ansible.builtin.user:
@@ -25,19 +41,22 @@
     system: true
     shell: /bin/false
     create_home: false
+  become: true
 
 - name: "Create node exporter systemd service"
   ansible.builtin.template:
     src: "node_exporter_systemd.j2"
     dest: "/etc/systemd/system/node_exporter.service"
     mode: 0644
+  become: true
+  notify:
+    - Reload Systemd daemon
+    - Start node_exporter service
 
-- name: "Reload Systemd daemon"
-  ansible.builtin.systemd:
-    daemon-reload: true
-
-- name: "Start and Enable node_exporter service"
-  ansible.builtin.systemd:
-    name: node_exporter
-    enabled: "{{ prometheus_node_exporter_service_enabled }}"
-    state: started
+- name: "Delete files downloaded"
+  ansible.builtin.file:
+    path: "/tmp/{item}"
+    state: absent
+  with_items:
+    - node_exporter-{{ prometheus_node_exporter_version }}.linux-amd64.tar.gz
+    - node_exporter-{{ prometheus_node_exporter_version }}.linux-amd64/node_exporter
