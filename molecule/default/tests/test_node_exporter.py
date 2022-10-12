@@ -12,7 +12,7 @@ def test_if_node_exporter_is_running_and_or_is_enabled(host):
     assert node_exporter_service.is_running
 
     node_exporter_service_enabled = host.ansible("debug","var=prometheus_node_exporter_service_enabled")
-    if node_exporter_service_enabled == "true" :
+    if bool(node_exporter_service_enabled) :
         assert node_exporter_service.is_enabled
 
 
