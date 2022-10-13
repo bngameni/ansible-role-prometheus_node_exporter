@@ -1,29 +1,35 @@
 ---
-- name: "Check if node exporter is already installed"
+- name: "Get stats of node exporter binary path"
   ansible.builtin.stat:
     path: /usr/local/bin/node_exporter
-  register: _prometheus_node_exporter_is_installed
+  register: _prometheus_node_exporter_binary_path
 
 - name: "Get current node exporter version when it's already installed"
   ansible.builtin.shell:
     cmd: "node_exporter --version | grep 'version ' | cut -f2 -d ',' | sed 's#version##g' | sed 's#(branch: HEAD##g'"
   register: _prometheus_node_exporter_current_version
+  failed_when: false
   changed_when: false
   ignore_errors: true
+# failed_when: false is for escape errors when node_exporter is'nt installed, no red failure marker in console
+
+- name: "Registrer variables for check when service is already installed if service is going to be update"
+  ansible.builtin.set_fact:
+    _prometheus_node_exporter_is_going_to_be_update: "{{ (_prometheus_node_exporter_current_version.stdout | trim) != prometheus_node_exporter_version }}"
 
 - name: "Get node exporter package"
   ansible.builtin.get_url:
     url: "{{ _prometheus_node_exporter_download_url }}"
     dest: "/tmp/node_exporter-{{ prometheus_node_exporter_version }}.linux-amd64.tar.gz"
     mode: 0644
-  when: "(_prometheus_node_exporter_current_version.stdout | trim) != prometheus_node_exporter_version"
+  when: _prometheus_node_exporter_is_going_to_be_update
 
 - name: "Unpack the tarball"
   ansible.builtin.unarchive:
     src: "/tmp/node_exporter-{{ prometheus_node_exporter_version }}.linux-amd64.tar.gz"
     dest: /tmp
     remote_src: true
-  when: "(_prometheus_node_exporter_current_version.stdout | trim) != prometheus_node_exporter_version"
+  when: _prometheus_node_exporter_is_going_to_be_update
 
 - name: "Copy the node exporter binary to /usr/local/bin"
   ansible.builtin.copy:
@@ -32,7 +38,9 @@
     mode: a+x
     remote_src: true
   become: true
-  when: "(_prometheus_node_exporter_current_version.stdout | trim) != prometheus_node_exporter_version"
+  when: _prometheus_node_exporter_is_going_to_be_update
+  notify:
+    - Start node_exporter service
 
 - name: "Create node exporter user"
   ansible.builtin.user:
@@ -57,6 +65,6 @@
   ansible.builtin.file:
     path: "/tmp/{item}"
     state: absent
-  with_items:
+  loop:
     - node_exporter-{{ prometheus_node_exporter_version }}.linux-amd64.tar.gz
     - node_exporter-{{ prometheus_node_exporter_version }}.linux-amd64/node_exporter
