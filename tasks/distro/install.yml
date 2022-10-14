@@ -6,16 +6,22 @@
 
 - name: "Get current node exporter version when it's already installed"
   ansible.builtin.shell:
-    cmd: "node_exporter --version | grep 'version ' | cut -f2 -d ',' | sed 's#version##g' | sed 's#(branch: HEAD##g'"
+    cmd: "node_exporter --version | grep -Po '(?<=version )[^ ]+'"
   register: _prometheus_node_exporter_current_version
-  failed_when: false
-  changed_when: false
-  ignore_errors: true
-# failed_when: false is for escape errors when node_exporter is'nt installed, no red failure marker in console
+  when: _prometheus_node_exporter_binary_path.stat.exists
+
+- name: "Set current version as NOTINSTALLED when node_exporter isn't installed"
+  ansible.builtin.set_fact:
+    _prometheus_node_exporter_current_version: {'stdout': "NOTINSTALLED"}
+  when: not _prometheus_node_exporter_binary_path.stat.exists
 
 - name: "Registrer variables for check when service is already installed if service is going to be update"
   ansible.builtin.set_fact:
     _prometheus_node_exporter_is_going_to_be_update: "{{ (_prometheus_node_exporter_current_version.stdout | trim) != prometheus_node_exporter_version }}"
+
+- name: "Debug"
+  ansible.builtin.debug:
+    var: _prometheus_node_exporter_is_going_to_be_update
 
 - name: "Get node exporter package"
   ansible.builtin.get_url:
