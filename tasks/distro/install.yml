@@ -9,6 +9,8 @@
     cmd: "node_exporter --version | grep -Po '(?<=version )[^ ]+'"
   register: _prometheus_node_exporter_current_version
   when: _prometheus_node_exporter_binary_path.stat.exists
+  changed_when: false
+  # for idempotence
 
 - name: "Set current version as NOTINSTALLED when node_exporter isn't installed"
   ansible.builtin.set_fact:
@@ -17,25 +19,25 @@
 
 - name: "Registrer variables for check when service is already installed if service is going to be update"
   ansible.builtin.set_fact:
-    _prometheus_node_exporter_is_going_to_be_update: "{{ (_prometheus_node_exporter_current_version.stdout | trim) != prometheus_node_exporter_version }}"
+    _prometheus_node_exporter_is_going_to_be_install_or_update: "{{ (_prometheus_node_exporter_current_version.stdout | trim) != prometheus_node_exporter_version }}"
 
 - name: "Debug"
   ansible.builtin.debug:
-    var: _prometheus_node_exporter_is_going_to_be_update
+    var: _prometheus_node_exporter_is_going_to_be_install_or_update
 
 - name: "Get node exporter package"
   ansible.builtin.get_url:
     url: "{{ _prometheus_node_exporter_download_url }}"
     dest: "/tmp/node_exporter-{{ prometheus_node_exporter_version }}.linux-amd64.tar.gz"
     mode: 0644
-  when: _prometheus_node_exporter_is_going_to_be_update
+  when: _prometheus_node_exporter_is_going_to_be_install_or_update
 
 - name: "Unpack the tarball"
   ansible.builtin.unarchive:
     src: "/tmp/node_exporter-{{ prometheus_node_exporter_version }}.linux-amd64.tar.gz"
     dest: /tmp
     remote_src: true
-  when: _prometheus_node_exporter_is_going_to_be_update
+  when: _prometheus_node_exporter_is_going_to_be_install_or_update
 
 - name: "Copy the node exporter binary to /usr/local/bin"
   ansible.builtin.copy:
@@ -44,7 +46,7 @@
     mode: a+x
     remote_src: true
   become: true
-  when: _prometheus_node_exporter_is_going_to_be_update
+  when: _prometheus_node_exporter_is_going_to_be_install_or_update
   notify:
     - Start node_exporter service
 
