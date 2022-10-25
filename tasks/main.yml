@@ -17,5 +17,80 @@
   loop_control:
     loop_var: loop_vars
 
-- name: "Install Prometheus Node Exporter In {{ ansible_distro }}"
-  ansible.builtin.include_tasks: "distro/install.yml"
+- name: "Get stats of node exporter binary path"
+  ansible.builtin.stat:
+    path: /usr/local/bin/node_exporter
+  register: _prometheus_node_exporter_binary_path
+
+- name: "Get current node exporter version when it's already installed"
+  ansible.builtin.shell:
+    cmd: "node_exporter --version | grep -Po '(?<=version )[^ ]+'"
+  register: _prometheus_node_exporter_current_version
+  when: _prometheus_node_exporter_binary_path.stat.exists
+  changed_when: false
+  # for idempotence
+
+- name: "Set current version as NOTINSTALLED when node_exporter isn't installed"
+  ansible.builtin.set_fact:
+    _prometheus_node_exporter_current_version: {'stdout': "NOTINSTALLED"}
+  when: not _prometheus_node_exporter_binary_path.stat.exists
+
+- name: "Registrer variables for check when service is already installed if service is going to be update"
+  ansible.builtin.set_fact:
+    _prometheus_node_exporter_is_going_to_be_install_or_update: "{{ (_prometheus_node_exporter_current_version.stdout | trim) != prometheus_node_exporter_version }}"
+
+- name: "Debug"
+  ansible.builtin.debug:
+    var: _prometheus_node_exporter_is_going_to_be_install_or_update
+
+- name: "Get node exporter package"
+  ansible.builtin.get_url:
+    url: "{{ _prometheus_node_exporter_download_url }}"
+    dest: "/tmp/node_exporter-{{ prometheus_node_exporter_version }}.linux-amd64.tar.gz"
+    mode: 0644
+  when: _prometheus_node_exporter_is_going_to_be_install_or_update
+
+- name: "Unpack the tarball"
+  ansible.builtin.unarchive:
+    src: "/tmp/node_exporter-{{ prometheus_node_exporter_version }}.linux-amd64.tar.gz"
+    dest: /tmp
+    remote_src: true
+  when: _prometheus_node_exporter_is_going_to_be_install_or_update
+
+- name: "Copy the node exporter binary to /usr/local/bin"
+  ansible.builtin.copy:
+    src: "/tmp/node_exporter-{{ prometheus_node_exporter_version }}.linux-amd64/node_exporter"
+    dest: /usr/local/bin
+    mode: a+x
+    remote_src: true
+  become: true
+  when: _prometheus_node_exporter_is_going_to_be_install_or_update
+  notify:
+    - Start node_exporter service
+
+- name: "Create node exporter user"
+  ansible.builtin.user:
+    name: node_exporter
+    state: present
+    system: true
+    shell: /bin/false
+    create_home: false
+  become: true
+
+- name: "Create node exporter systemd service"
+  ansible.builtin.template:
+    src: "node_exporter_systemd.j2"
+    dest: "/etc/systemd/system/node_exporter.service"
+    mode: 0644
+  become: true
+  notify:
+    - Reload Systemd daemon
+    - Start node_exporter service
+
+- name: "Delete files downloaded"
+  ansible.builtin.file:
+    path: "/tmp/{item}"
+    state: absent
+  loop:
+    - node_exporter-{{ prometheus_node_exporter_version }}.linux-amd64.tar.gz
+    - node_exporter-{{ prometheus_node_exporter_version }}.linux-amd64/node_exporter
